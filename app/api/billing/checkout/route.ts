@@ -3,7 +3,7 @@ import { auth } from "@/lib/proxy"
 import { db } from "@/lib/db"
 import { users } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
-import { stripe } from "@/lib/stripe"
+import { getStripe } from "@/lib/stripe"
 
 export async function POST() {
   const session = await auth()
@@ -23,7 +23,7 @@ export async function POST() {
 
   const baseUrl = process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000"
 
-  const checkoutSession = await stripe.checkout.sessions.create({
+  const checkoutSession = await getStripe().checkout.sessions.create({
     mode: "subscription",
     customer_email: session.user.email,
     line_items: [

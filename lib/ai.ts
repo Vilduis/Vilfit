@@ -4,7 +4,11 @@ import { applications } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
 import type { JobOffer } from "@/lib/db/schema"
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!)
+let genAI: GoogleGenerativeAI | null = null
+function getGenAI() {
+  if (!genAI) genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!)
+  return genAI
+}
 
 interface AnalyzeInput {
   applicationId: string
@@ -24,7 +28,9 @@ interface AIResult {
 async function fetchCvText(cvUrl: string): Promise<string> {
   const res = await fetch(cvUrl)
   const buffer = await res.arrayBuffer()
-  const pdfParse = (await import("pdf-parse")).default
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mod = (await import("pdf-parse")) as any
+  const pdfParse = mod.default ?? mod
   const result = await pdfParse(Buffer.from(buffer))
   return result.text.slice(0, 8000)
 }
@@ -72,7 +78,7 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura exacta:
 
 No incluyas ningún texto fuera del JSON.`
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" })
+  const model = getGenAI().getGenerativeModel({ model: "gemini-2.5-flash-lite" })
   const result = await model.generateContent(prompt)
   const text = result.response.text().trim()
 

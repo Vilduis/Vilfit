@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { stripe } from "@/lib/stripe"
+import { getStripe } from "@/lib/stripe"
 import { db } from "@/lib/db"
 import { recruiterProfiles, subscriptions } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
 
   let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!)
+    event = getStripe().webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!)
   } catch {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
   }
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     const userId = session.metadata?.userId
     if (!userId || !session.subscription) return NextResponse.json({ ok: true })
 
-    const sub = await stripe.subscriptions.retrieve(session.subscription as string)
+    const sub = await getStripe().subscriptions.retrieve(session.subscription as string)
     const periodEnd = new Date((sub as unknown as { current_period_end: number }).current_period_end * 1000)
 
     const existing = await db
