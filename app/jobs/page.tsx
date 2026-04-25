@@ -113,15 +113,15 @@ export default async function JobsPage({
               <Card key={job.id} className="transition-all hover:ring-2 hover:ring-primary/30">
                 <CardContent className="py-4">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h2 className="text-base font-semibold">{job.title}</h2>
                         <Badge variant="secondary">{typeLabels[job.type] ?? job.type}</Badge>
                       </div>
                       {profile?.company && (
                         <p className="text-sm font-medium text-foreground/70">{profile.company}</p>
                       )}
-                      <p className="text-sm text-muted-foreground line-clamp-2">
+                      <p className="line-clamp-2 text-sm text-muted-foreground">
                         {job.description}
                       </p>
                       <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">

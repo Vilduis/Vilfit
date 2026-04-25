@@ -1,4 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require("pdf-parse") as (data: Buffer) => Promise<{ text: string; numpages: number }>
 import { db } from "@/lib/db"
 import { applications } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
@@ -28,9 +30,6 @@ interface AIResult {
 async function fetchCvText(cvUrl: string): Promise<string> {
   const res = await fetch(cvUrl)
   const buffer = await res.arrayBuffer()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mod = (await import("pdf-parse")) as any
-  const pdfParse = mod.default ?? mod
   const result = await pdfParse(Buffer.from(buffer))
   return result.text.slice(0, 8000)
 }
