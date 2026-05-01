@@ -77,7 +77,7 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura exacta:
 
 No incluyas ningún texto fuera del JSON.`
 
-  const model = getGenAI().getGenerativeModel({ model: "gemini-2.5-flash-lite" })
+  const model = getGenAI().getGenerativeModel({ model: "gemini-2.5-flash" })
   const result = await model.generateContent(prompt)
   const text = result.response.text().trim()
 
