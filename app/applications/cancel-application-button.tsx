@@ -23,9 +23,7 @@ export function CancelApplicationButton({ applicationId }: { applicationId: stri
   async function handleCancel() {
     setLoading(true)
     try {
-      const res = await fetch(`/api/applications/${applicationId}`, {
-        method: "DELETE",
-      })
+      const res = await fetch(`/api/applications/${applicationId}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Error al cancelar")
       router.refresh()
     } catch (err) {
@@ -46,7 +44,7 @@ export function CancelApplicationButton({ applicationId }: { applicationId: stri
         <AlertDialogHeader>
           <AlertDialogTitle>¿Cancelar postulación?</AlertDialogTitle>
           <AlertDialogDescription>
-            Se eliminará tu postulación y no podrás deshacer esta acción. Podrás volver a postularte a esta oferta si quieres.
+            Se eliminará tu postulación. Podrás volver a postularte a esta oferta más adelante si querés.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

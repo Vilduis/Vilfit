@@ -1,48 +1,47 @@
-import { auth } from "@/lib/proxy"
 import { db } from "@/lib/db"
-import { users, recruiterProfiles } from "@/lib/db/schema"
+import { recruiterProfiles } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
-import { redirect } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Navbar } from "@/components/navbar"
+import { requireRecruiter } from "@/lib/auth-helpers"
 import { NewJobForm } from "./new-job-form"
 
 export default async function NewJobPage() {
-  const session = await auth()
-  if (!session?.user?.email) redirect("/login")
+  const { sessionUser, dbUser } = await requireRecruiter()
 
-  const dbUser = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, session.user.email))
-    .limit(1)
-
-  if (!dbUser[0] || dbUser[0].role !== "recruiter") redirect("/dashboard")
-
-  const profile = await db
+  const [profile] = await db
     .select()
     .from(recruiterProfiles)
-    .where(eq(recruiterProfiles.userId, dbUser[0].id))
-    .limit(1)
-
-  const companyName = profile[0]?.company ?? null
+    .where(eq(recruiterProfiles.userId, dbUser.id))
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card px-6 py-4">
-        <div className="mx-auto flex max-w-3xl items-center gap-4">
-          <Button variant="ghost" size="icon-sm" asChild>
-            <Link href="/recruiter/dashboard">
-              <ArrowLeft className="size-4" />
-            </Link>
-          </Button>
-          <h1 className="text-xl font-semibold">Nueva oferta laboral</h1>
-        </div>
-      </header>
+      <Navbar
+        userName={sessionUser.name ?? null}
+        userEmail={sessionUser.email ?? null}
+        userImage={sessionUser.image ?? null}
+        role="recruiter"
+      />
 
-      <main className="mx-auto max-w-3xl space-y-6 p-6">
-        <NewJobForm companyName={companyName} />
+      {/* Breadcrumb */}
+      <div className="border-b bg-card/60 px-6 py-3 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-3xl items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/recruiter/dashboard" className="transition-colors hover:text-foreground">Dashboard</Link>
+          <span>/</span>
+          <Link href="/recruiter/jobs" className="transition-colors hover:text-foreground">Mis ofertas</Link>
+          <span>/</span>
+          <span className="font-medium text-foreground">Nueva oferta</span>
+        </div>
+      </div>
+
+      <main className="mx-auto max-w-3xl px-6 py-8">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold tracking-tight">Nueva oferta laboral</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Completá los datos de la oferta. Podés guardarla como borrador o publicarla directamente.
+          </p>
+        </div>
+        <NewJobForm companyName={profile?.company ?? null} />
       </main>
     </div>
   )

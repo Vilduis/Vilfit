@@ -2,20 +2,31 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Trash2, Building2 } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CompanyAvatar } from "@/components/company-avatar"
+import { cn } from "@/lib/utils"
 
 interface NewJobFormProps {
   companyName: string | null
 }
 
+const jobTypes = [
+  { value: "full-time", label: "Tiempo completo" },
+  { value: "part-time", label: "Medio tiempo" },
+  { value: "remote", label: "Remoto" },
+  { value: "hybrid", label: "Híbrido" },
+]
+
 export function NewJobForm({ companyName }: NewJobFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [jobType, setJobType] = useState("full-time")
+  const [pendingStatus, setPendingStatus] = useState<"draft" | "active">("draft")
   const [screeningQuestions, setScreeningQuestions] = useState<string[]>([""])
 
   function addQuestion() {
@@ -27,12 +38,10 @@ export function NewJobForm({ companyName }: NewJobFormProps) {
   }
 
   function updateQuestion(index: number, value: string) {
-    setScreeningQuestions((prev) =>
-      prev.map((q, i) => (i === index ? value : q))
-    )
+    setScreeningQuestions((prev) => prev.map((q, i) => (i === index ? value : q)))
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>, status: "draft" | "active") {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
 
@@ -43,9 +52,9 @@ export function NewJobForm({ companyName }: NewJobFormProps) {
       requirements: (form.elements.namedItem("requirements") as HTMLTextAreaElement).value,
       location: (form.elements.namedItem("location") as HTMLInputElement).value,
       salaryRange: (form.elements.namedItem("salaryRange") as HTMLInputElement).value,
-      type: (form.elements.namedItem("type") as HTMLSelectElement).value,
+      type: jobType,
       screeningQuestions: screeningQuestions.filter((q) => q.trim()),
-      status,
+      status: pendingStatus,
     }
 
     try {
@@ -56,45 +65,37 @@ export function NewJobForm({ companyName }: NewJobFormProps) {
       })
 
       if (!res.ok) throw new Error()
-
-      const job = await res.json()
-
-      if (status === "active") {
-        await fetch(`/api/jobs/${job.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "active" }),
-        })
-      }
-
-      router.push("/recruiter/dashboard")
+      router.push("/recruiter/jobs")
     } catch {
       setLoading(false)
     }
   }
 
   return (
-    <form onSubmit={(e) => handleSubmit(e, "draft")}>
-      <div className="space-y-6">
+    <form onSubmit={handleSubmit}>
+      <div className="space-y-5">
+
+        {/* Sección 1: Información básica */}
         <Card>
           <CardHeader>
-            <CardTitle>Información básica</CardTitle>
+            <CardTitle className="flex items-center gap-2.5 text-base">
+              <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                1
+              </span>
+              Información básica
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Empresa</Label>
-              <div className="flex items-center gap-2 rounded-md border border-input bg-muted px-3 py-2 text-sm text-muted-foreground">
-                <Building2 className="size-4 shrink-0" />
-                <span className="flex-1">
-                  {companyName || "Sin nombre de empresa"}
-                </span>
-                <a
-                  href="/recruiter/profile"
-                  className="text-xs text-primary hover:underline"
-                >
-                  Editar
-                </a>
+            {/* Company display */}
+            <div className="flex items-center gap-3 rounded-xl border bg-muted/40 px-4 py-3">
+              <CompanyAvatar name={companyName ?? "Empresa"} size="sm" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{companyName ?? "Sin nombre de empresa"}</p>
+                <p className="text-xs text-muted-foreground">Empresa publicante</p>
               </div>
+              <a href="/recruiter/profile" className="shrink-0 text-xs text-primary hover:underline">
+                Editar
+              </a>
             </div>
 
             <div className="space-y-2">
@@ -127,24 +128,37 @@ export function NewJobForm({ companyName }: NewJobFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="type">Modalidad</Label>
-              <select
-                id="type"
-                name="type"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="full-time">Tiempo completo</option>
-                <option value="part-time">Medio tiempo</option>
-                <option value="remote">Remoto</option>
-                <option value="hybrid">Híbrido</option>
-              </select>
+              <Label>Modalidad</Label>
+              <div className="flex flex-wrap gap-2">
+                {jobTypes.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setJobType(value)}
+                    className={cn(
+                      "rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
+                      jobType === value
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
 
+        {/* Sección 2: Descripción */}
         <Card>
           <CardHeader>
-            <CardTitle>Descripción y requisitos</CardTitle>
+            <CardTitle className="flex items-center gap-2.5 text-base">
+              <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                2
+              </span>
+              Descripción y requisitos
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -157,7 +171,6 @@ export function NewJobForm({ companyName }: NewJobFormProps) {
                 required
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="requirements">Requisitos</Label>
               <Textarea
@@ -170,13 +183,19 @@ export function NewJobForm({ companyName }: NewJobFormProps) {
           </CardContent>
         </Card>
 
+        {/* Sección 3: Screening */}
         <Card>
           <CardHeader>
-            <CardTitle>Preguntas de screening</CardTitle>
+            <CardTitle className="flex items-center gap-2.5 text-base">
+              <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                3
+              </span>
+              Preguntas de screening
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Los candidatos responderán estas preguntas al postularse. La IA las tomará en cuenta para el análisis.
+              Los candidatos responderán estas preguntas al postularse. La IA las considerará en el análisis.
             </p>
             {screeningQuestions.map((q, i) => (
               <div key={i} className="flex gap-2">
@@ -203,34 +222,36 @@ export function NewJobForm({ companyName }: NewJobFormProps) {
               size="sm"
               onClick={addQuestion}
             >
-              <Plus className="size-4" />
+              <Plus data-icon="inline-start" />
               Agregar pregunta
             </Button>
           </CardContent>
         </Card>
 
-        <div className="flex gap-3 justify-end">
+        {/* Acciones */}
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={loading}
+            onClick={() => router.push("/recruiter/jobs")}
+          >
+            Cancelar
+          </Button>
           <Button
             type="submit"
             variant="outline"
             disabled={loading}
-            onClick={(e) => {
-              e.preventDefault()
-              const form = e.currentTarget.closest("form") as HTMLFormElement
-              handleSubmit({ currentTarget: form, preventDefault: () => {} } as React.FormEvent<HTMLFormElement>, "draft")
-            }}
+            onClick={() => setPendingStatus("draft")}
           >
-            Guardar borrador
+            {loading && pendingStatus === "draft" ? "Guardando..." : "Guardar borrador"}
           </Button>
           <Button
-            type="button"
+            type="submit"
             disabled={loading}
-            onClick={(e) => {
-              const form = e.currentTarget.closest("form") as HTMLFormElement
-              handleSubmit({ currentTarget: form, preventDefault: () => {} } as React.FormEvent<HTMLFormElement>, "active")
-            }}
+            onClick={() => setPendingStatus("active")}
           >
-            Publicar oferta
+            {loading && pendingStatus === "active" ? "Publicando..." : "Publicar oferta"}
           </Button>
         </div>
       </div>

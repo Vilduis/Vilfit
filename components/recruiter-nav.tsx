@@ -1,0 +1,38 @@
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { LayoutDashboard, Briefcase, Building2 } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const tabs = [
+  { href: "/recruiter/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/recruiter/jobs", label: "Mis ofertas", icon: Briefcase },
+  { href: "/recruiter/profile", label: "Empresa", icon: Building2 },
+]
+
+export function RecruiterNav() {
+  const pathname = usePathname()
+
+  return (
+    <div className="border-b bg-card/60 px-6 backdrop-blur-sm">
+      <div className="mx-auto flex max-w-6xl gap-1">
+        {tabs.map(({ href, label, icon: Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className={cn(
+              "flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+              pathname === href
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Icon className="size-4" />
+            {label}
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}

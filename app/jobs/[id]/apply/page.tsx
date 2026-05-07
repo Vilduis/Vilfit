@@ -1,206 +1,92 @@
-"use client"
-
-import { useState, use } from "react"
-import { useRouter } from "next/navigation"
-import { Upload, ArrowLeft, Loader2 } from "lucide-react"
+import { db } from "@/lib/db"
+import { jobOffers, applications } from "@/lib/db/schema"
+import { eq, and } from "drizzle-orm"
+import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Navbar } from "@/components/navbar"
+import { CompanyAvatar } from "@/components/company-avatar"
+import { JOB_TYPE_LABELS } from "@/lib/constants"
+import { requireCandidate } from "@/lib/auth-helpers"
+import { ApplyForm } from "./apply-form"
 
-interface JobData {
-  id: string
-  title: string
-  screeningQuestions: string[]
-}
-
-async function fetchJob(id: string): Promise<JobData> {
-  const res = await fetch(`/api/jobs/${id}`)
-  if (!res.ok) throw new Error("Oferta no encontrada")
-  return res.json()
-}
-
-export default function ApplyPage({
+export default async function ApplyPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
-  const { id } = use(params)
-  const router = useRouter()
-  const [job, setJob] = useState<JobData | null>(null)
-  const [answers, setAnswers] = useState<string[]>([])
-  const [cvFile, setCvFile] = useState<File | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [fetchingJob, setFetchingJob] = useState(true)
-  const [error, setError] = useState("")
+  const { id } = await params
+  const { sessionUser, dbUser } = await requireCandidate()
 
-  // Fetch job on mount
-  useState(() => {
-    fetchJob(id)
-      .then((data) => {
-        setJob(data)
-        setAnswers(new Array(data.screeningQuestions?.length ?? 0).fill(""))
-        setFetchingJob(false)
-      })
-      .catch(() => {
-        setError("No se pudo cargar la oferta")
-        setFetchingJob(false)
-      })
-  })
+  const [jobRows, existingRows] = await Promise.all([
+    db.select().from(jobOffers).where(eq(jobOffers.id, id)).limit(1),
+    db
+      .select()
+      .from(applications)
+      .where(and(eq(applications.jobOfferId, id), eq(applications.candidateId, dbUser.id)))
+      .limit(1),
+  ])
 
-  function updateAnswer(index: number, value: string) {
-    setAnswers((prev) => prev.map((a, i) => (i === index ? value : a)))
-  }
+  if (!jobRows[0] || jobRows[0].status !== "active") notFound()
+  if (existingRows[0]) redirect(`/jobs/${id}`)
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!cvFile) {
-      setError("Debes subir tu CV en formato PDF")
-      return
-    }
-    setLoading(true)
-    setError("")
-
-    const formData = new FormData()
-    formData.append("cv", cvFile)
-    formData.append("jobId", id)
-    formData.append("answers", JSON.stringify(answers))
-
-    const res = await fetch(`/api/jobs/${id}/apply`, {
-      method: "POST",
-      body: formData,
-    })
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      setError(data.error ?? "Error al enviar la postulación")
-      setLoading(false)
-      return
-    }
-
-    router.push("/dashboard?applied=1")
-  }
-
-  if (fetchingJob) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
-  if (!job) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground">Oferta no encontrada</p>
-      </div>
-    )
-  }
+  const job = jobRows[0]
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card px-6 py-4">
-        <div className="mx-auto flex max-w-2xl items-center gap-4">
-          <Button variant="ghost" size="icon-sm" asChild>
-            <Link href={`/jobs/${id}`}>
-              <ArrowLeft className="size-4" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-xl font-semibold">Postularme</h1>
-            <p className="text-sm text-muted-foreground">{job.title}</p>
-          </div>
-        </div>
-      </header>
+      <Navbar
+        userName={sessionUser.name ?? null}
+        userEmail={sessionUser.email ?? null}
+        userImage={sessionUser.image ?? null}
+        role="candidate"
+      />
 
-      <main className="mx-auto max-w-2xl space-y-6 p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tu CV</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <label
-                htmlFor="cv-upload"
-                className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border p-8 text-center transition-colors hover:border-primary hover:bg-muted/30"
-              >
-                <Upload className="size-8 text-muted-foreground" />
-                {cvFile ? (
-                  <div>
-                    <p className="font-medium text-foreground">{cvFile.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {(cvFile.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="font-medium">Sube tu CV en PDF</p>
-                    <p className="text-sm text-muted-foreground">Máximo 10 MB</p>
-                  </div>
-                )}
-                <input
-                  id="cv-upload"
-                  type="file"
-                  accept=".pdf"
-                  className="sr-only"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file && file.type === "application/pdf" && file.size <= 10 * 1024 * 1024) {
-                      setCvFile(file)
-                    } else if (file) {
-                      setError("Solo se aceptan archivos PDF de hasta 10 MB")
-                    }
-                  }}
-                />
-              </label>
-            </CardContent>
-          </Card>
-
-          {job.screeningQuestions && job.screeningQuestions.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Preguntas de screening</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {job.screeningQuestions.map((question, i) => (
-                  <div key={i} className="space-y-2">
-                    <Label>
-                      {i + 1}. {question}
-                    </Label>
-                    <Textarea
-                      value={answers[i] ?? ""}
-                      onChange={(e) => updateAnswer(i, e.target.value)}
-                      placeholder="Tu respuesta..."
-                      rows={3}
-                      required
-                    />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
-
-          <Button
-            type="submit"
-            className="w-full"
-            size="lg"
-            disabled={loading || !cvFile}
+      {/* Breadcrumb */}
+      <div className="border-b bg-card/60 px-6 py-3 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-2xl items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/jobs" className="transition-colors hover:text-foreground">
+            Ofertas
+          </Link>
+          <span>/</span>
+          <Link
+            href={`/jobs/${id}`}
+            className="max-w-[160px] truncate transition-colors hover:text-foreground"
           >
-            {loading ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Enviando postulación...
-              </>
-            ) : (
-              "Enviar postulación"
-            )}
-          </Button>
-        </form>
+            {job.title}
+          </Link>
+          <span>/</span>
+          <span className="font-medium text-foreground">Postularme</span>
+        </div>
+      </div>
+
+      <main className="mx-auto max-w-2xl px-6 py-8">
+        {/* Job context */}
+        <div className="mb-6 flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm">
+          <CompanyAvatar name={job.title} size="md" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold leading-snug">{job.title}</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {[job.location, JOB_TYPE_LABELS[job.type] ?? job.type].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          <Link
+            href={`/jobs/${id}`}
+            className="shrink-0 text-xs text-primary transition-colors hover:underline"
+          >
+            Ver oferta
+          </Link>
+        </div>
+
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold tracking-tight">Postularme</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Subí tu CV y la IA analizará tu perfil automáticamente.
+          </p>
+        </div>
+
+        <ApplyForm
+          jobId={id}
+          screeningQuestions={job.screeningQuestions ?? []}
+        />
       </main>
     </div>
   )

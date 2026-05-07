@@ -208,12 +208,12 @@ export function ProfileForm({ role, apiPath, initialValues }: ProfileFormProps) 
         <Button onClick={handleSave} disabled={loading}>
           {loading ? (
             <>
-              <Loader2 className="size-4 animate-spin" />
+              <Loader2 data-icon="inline-start" className="animate-spin" />
               Guardando...
             </>
           ) : (
             <>
-              <Save className="size-4" />
+              <Save data-icon="inline-start" />
               Guardar cambios
             </>
           )}

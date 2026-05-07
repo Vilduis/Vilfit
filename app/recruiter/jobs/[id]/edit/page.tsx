@@ -1,11 +1,10 @@
-import { auth } from "@/lib/proxy"
 import { db } from "@/lib/db"
-import { users, jobOffers } from "@/lib/db/schema"
+import { jobOffers } from "@/lib/db/schema"
 import { eq, and } from "drizzle-orm"
-import { redirect, notFound } from "next/navigation"
+import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Navbar } from "@/components/navbar"
+import { requireRecruiter } from "@/lib/auth-helpers"
 import { EditJobForm } from "./edit-job-form"
 
 export default async function EditJobPage({
@@ -14,43 +13,43 @@ export default async function EditJobPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const session = await auth()
-  if (!session?.user?.email) redirect("/login")
+  const { sessionUser, dbUser } = await requireRecruiter()
 
-  const dbUser = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, session.user.email))
-    .limit(1)
-
-  if (!dbUser[0] || dbUser[0].role !== "recruiter") redirect("/dashboard")
-
-  const job = await db
+  const [job] = await db
     .select()
     .from(jobOffers)
-    .where(and(eq(jobOffers.id, id), eq(jobOffers.recruiterId, dbUser[0].id)))
-    .limit(1)
+    .where(and(eq(jobOffers.id, id), eq(jobOffers.recruiterId, dbUser.id)))
 
-  if (!job[0]) notFound()
+  if (!job) notFound()
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card px-6 py-4">
-        <div className="mx-auto flex max-w-3xl items-center gap-4">
-          <Button variant="ghost" size="icon-sm" asChild>
-            <Link href="/recruiter/jobs">
-              <ArrowLeft className="size-4" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-xl font-semibold">Editar oferta</h1>
-            <p className="text-sm text-muted-foreground">{job[0].title}</p>
-          </div>
-        </div>
-      </header>
+      <Navbar
+        userName={sessionUser.name ?? null}
+        userEmail={sessionUser.email ?? null}
+        userImage={sessionUser.image ?? null}
+        role="recruiter"
+      />
 
-      <main className="mx-auto max-w-3xl space-y-6 p-6">
-        <EditJobForm job={job[0]} />
+      {/* Breadcrumb */}
+      <div className="border-b bg-card/60 px-6 py-3 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-3xl items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/recruiter/dashboard" className="transition-colors hover:text-foreground">Dashboard</Link>
+          <span>/</span>
+          <Link href="/recruiter/jobs" className="transition-colors hover:text-foreground">Mis ofertas</Link>
+          <span>/</span>
+          <span className="max-w-[180px] truncate font-medium text-foreground">{job.title}</span>
+        </div>
+      </div>
+
+      <main className="mx-auto max-w-3xl px-6 py-8">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold tracking-tight">Editar oferta</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Actualizá los datos de la oferta laboral.
+          </p>
+        </div>
+        <EditJobForm job={job} />
       </main>
     </div>
   )

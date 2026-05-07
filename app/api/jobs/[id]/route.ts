@@ -47,9 +47,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const body = await req.json()
+  const { title, description, requirements, location, salaryRange, type, status, screeningQuestions } = body
   const updated = await db
     .update(jobOffers)
-    .set({ ...body, updatedAt: new Date() })
+    .set({
+      ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
+      ...(requirements !== undefined && { requirements }),
+      ...(location !== undefined && { location }),
+      ...(salaryRange !== undefined && { salaryRange }),
+      ...(type !== undefined && { type }),
+      ...(status !== undefined && { status }),
+      ...(screeningQuestions !== undefined && { screeningQuestions }),
+      updatedAt: new Date(),
+    })
     .where(eq(jobOffers.id, id))
     .returning()
 

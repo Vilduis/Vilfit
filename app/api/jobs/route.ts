@@ -31,11 +31,14 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { title, description, requirements, location, salaryRange, type, screeningQuestions } = body
+  const { title, description, requirements, location, salaryRange, type, screeningQuestions, status } = body
 
   if (!title || !description) {
     return NextResponse.json({ error: "Título y descripción requeridos" }, { status: 400 })
   }
+
+  const allowedStatuses = ["draft", "active"] as const
+  const resolvedStatus = allowedStatuses.includes(status) ? status : "draft"
 
   const job = await db
     .insert(jobOffers)
@@ -48,7 +51,7 @@ export async function POST(req: NextRequest) {
       location: location ?? null,
       salaryRange: salaryRange ?? null,
       type: type ?? "full-time",
-      status: "draft",
+      status: resolvedStatus,
       screeningQuestions: screeningQuestions ?? [],
     })
     .returning()

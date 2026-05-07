@@ -82,7 +82,7 @@ export function UserMenu({ name, email, image, role }: UserMenuProps) {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/dashboard">
+                <Link href="/applications">
                   <FileText className="size-4" />
                   Mis postulaciones
                 </Link>
